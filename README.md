@@ -131,3 +131,4 @@ automaticamente:
 - `/checkout/pending`
 "# g1suplementos23" 
 "# g1suplementoss" 
+"# g1suplementoss" 
