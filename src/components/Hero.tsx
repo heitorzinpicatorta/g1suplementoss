@@ -75,14 +75,13 @@ export function Hero({ onAddToCart, onViewDetails }: { onAddToCart?: (p: any) =>
               SUPLEMENTOS
               <br />
               <span
-                style={{
-                  color: "#f97316",
-                  WebkitTextStroke: "2px #f97316",
-                  WebkitTextFillColor: "transparent",
-                }}
-              >
-               1%
-              </span>
+  style={{
+    color: "#f97316",
+    WebkitTextFillColor: "#f97316",
+  }}
+>
+  1%
+</span>
             </h1>
           </FadeIn>
 
