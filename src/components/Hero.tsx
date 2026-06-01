@@ -81,7 +81,7 @@ export function Hero({ onAddToCart, onViewDetails }: { onAddToCart?: (p: any) =>
                   WebkitTextFillColor: "transparent",
                 }}
               >
-                DE ELITE
+               1%
               </span>
             </h1>
           </FadeIn>
