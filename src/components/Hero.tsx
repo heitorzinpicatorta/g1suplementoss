@@ -80,7 +80,7 @@ export function Hero({ onAddToCart, onViewDetails }: { onAddToCart?: (p: any) =>
     WebkitTextFillColor: "#f97316",
   }}
 >
-  1%
+  G1%
 </span>
             </h1>
           </FadeIn>
