@@ -6,6 +6,39 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 /**
+ * Upload de imagem do produto para Supabase Storage
+ */
+export async function uploadProductImage(file: File): Promise<string> {
+  try {
+    // Gera um nome único para a imagem
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 9);
+    const filename = `${timestamp}-${random}-${file.name}`;
+    const filepath = `products/${filename}`;
+
+    // Faz upload
+    const { data, error } = await supabase.storage
+      .from("product-images")
+      .upload(filepath, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) throw error;
+
+    // Pega a URL pública
+    const { data: publicData } = supabase.storage
+      .from("product-images")
+      .getPublicUrl(data.path);
+
+    return publicData.publicUrl;
+  } catch (err) {
+    console.error("❌ Erro ao fazer upload da imagem:", err);
+    throw err;
+  }
+}
+
+/**
  * Fetch produtos da Supabase
  */
 export async function fetchProducts() {
