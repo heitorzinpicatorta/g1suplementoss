@@ -1,5 +1,10 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { PRODUCTS as INITIAL_PRODUCTS } from "@/data/products";
+import { 
+  fetchProducts, saveProducts, 
+  fetchCategories, saveCategories, 
+  fetchStoreSettings, saveStoreSettings 
+} from "@/lib/supabase";
 
 export type Badge = "MAIS VENDIDO" | "OFERTA" | "ESGOTADO" | null;
 
@@ -37,6 +42,7 @@ interface StoreContextType {
   products: Product[];
   categories: string[];
   settings: StoreSettings;
+  isLoading: boolean;
   updateProduct: (id: number, changes: Partial<Product>) => void;
   addProduct: (product: Omit<Product, "id" | "discount">) => void;
   deleteProduct: (id: number) => void;
@@ -65,7 +71,7 @@ function calcDiscount(from: number, to: number): number {
   return Math.max(0, Math.round(((from - to) / from) * 100));
 }
 
-function save(data: StoreData) {
+function saveLocally(data: StoreData) {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch { /* ignore */ }
 }
 
@@ -103,11 +109,47 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<StoreData>(getInitialData);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Carrega dados do Supabase quando o provider monta
+  useEffect(() => {
+    async function loadFromSupabase() {
+      setIsLoading(true);
+      try {
+        const [supabaseProducts, supabaseCategories, supabaseSettings] = await Promise.all([
+          fetchProducts(),
+          fetchCategories(),
+          fetchStoreSettings(),
+        ]);
+
+        setData({
+          products: (supabaseProducts as any[]).map(migrateProduct),
+          categories: supabaseCategories,
+          settings: { ...defaultSettings, ...supabaseSettings },
+        });
+      } catch (err) {
+        console.error("⚠️ Erro ao carregar do Supabase, usando dados locais:", err);
+        // Continua com dados locais em caso de erro
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadFromSupabase();
+  }, []);
 
   const mutate = useCallback((fn: (prev: StoreData) => StoreData) => {
     setData((prev) => {
       const next = fn(prev);
-      save(next);
+      saveLocally(next);
+      
+      // Salva no Supabase de forma assíncrona (não bloqueia a UI)
+      Promise.all([
+        saveProducts(next.products),
+        saveCategories(next.categories),
+        saveStoreSettings(next.settings),
+      ]).catch(err => console.error("❌ Erro ao sincronizar com Supabase:", err));
+      
       return next;
     });
   }, []);
@@ -213,12 +255,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       categories: initialCategories,
       settings: defaultSettings,
     };
-    save(fresh);
+    saveLocally(fresh);
     setData(fresh);
+    
+    // Sincroniza reset com Supabase
+    Promise.all([
+      saveProducts(fresh.products),
+      saveCategories(fresh.categories),
+      saveStoreSettings(fresh.settings),
+    ]).catch(err => console.error("❌ Erro ao resetar no Supabase:", err));
   }, []);
 
   return (
-    <StoreContext.Provider value={{ products: data.products, categories: data.categories, settings: data.settings, updateProduct, addProduct, deleteProduct, moveProduct, moveProductInCategory, addCategory, renameCategory, deleteCategory, moveCategory, updateSettings, resetToDefaults }}>
+    <StoreContext.Provider value={{ products: data.products, categories: data.categories, settings: data.settings, isLoading, updateProduct, addProduct, deleteProduct, moveProduct, moveProductInCategory, addCategory, renameCategory, deleteCategory, moveCategory, updateSettings, resetToDefaults }}>
       {children}
     </StoreContext.Provider>
   );
